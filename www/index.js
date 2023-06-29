@@ -7,12 +7,49 @@ const height = universe.height();
 const canvas = document.querySelector('canvas');
 canvas.width = (width + 1) + CELL_SIZE + 1;
 canvas.height = (height + 1) + CELL_SIZE + 1;
+let animationId = null;
+
+class fps {
+    constructor() {
+        this.timings = [];
+        this.lastTime = window.performance.now();
+    }
+
+    render() {
+        const currentTime = window.performance.now();
+        const timeDifference = currentTime - this.lastTime;
+        this.lastTime = currentTime;
+
+        this.timings.push(timeDifference);
+        if (this.timings.length > 100) {
+            this.timings.shift();
+        }
+
+        // TODO: The demo includes a max of infinity and a min of negative infinity.
+        const average = this.timings.reduce((a, b) => a + b) / this.timings.length;
+        const min = Math.min(...this.timings);
+        const max = Math.max(...this.timings);
+
+        const fpsElement = document.getElementById('fps');
+        fpsElement.textContent = `Frames per second: Latest = ${timeDifference.toFixed(2)}, Average = ${average.toFixed(2)}, Min = ${min.toFixed(2)}, Max = ${max.toFixed(2)}`;
+    }
+}
+
+const fpsInstance = new fps();
 
 const renderLoop = () => {
-  pre.textContent = universe.render();
+  fpsInstance.render();
+
   universe.tick();
 
   drawGrid();
+  drawCells();
+
+  animationId = requestAnimationFrame(renderLoop);
+};
+
+const isPaused = () => {
+    return animationId === null;
 };
 
 const CELL_SIZE = 5;
@@ -48,19 +85,35 @@ const drawCells = () => {
 
     ctx.beginPath();
 
+    // Draw alive cells
+    ctx.fillStyle = ALIVE_COLOR;
     for (let row = 0; row < height; row++) {
         for (let col = 0; col < width; col++) {
             const idx = getIndex(row, col);
-            ctx.fillStyle = cells[idx] === Cell.Dead
-                ? DEAD_COLOR
-                : ALIVE_COLOR;
+            if (cells[idx] !== Cell.Dead) {
+                ctx.fillRect(
+                    col * (CELL_SIZE + 1) + 1,
+                    row * (CELL_SIZE + 1) + 1,
+                    CELL_SIZE,
+                    CELL_SIZE
+                );
+            }
+        }
+    }
 
-            ctx.fillRect(
-                col * (CELL_SIZE + 1) + 1,
-                row * (CELL_SIZE + 1) + 1,
-                CELL_SIZE,
-                CELL_SIZE
-            );
+    // Draw dead cells
+    ctx.fillStyle = DEAD_COLOR;
+    for (let row = 0; row < height; row++) {
+        for (let col = 0; col < width; col++) {
+            const idx = getIndex(row, col);
+            if (cells[idx] === Cell.Dead) {
+                ctx.fillRect(
+                    col * (CELL_SIZE + 1) + 1,
+                    row * (CELL_SIZE + 1) + 1,
+                    CELL_SIZE,
+                    CELL_SIZE
+                );
+            }
         }
     }
 
@@ -69,4 +122,41 @@ const drawCells = () => {
 
 drawGrid();
 drawCells();
-requestAnimationFrame(renderLoop);
+play();
+
+const playPauseButton = document.getElementById('play-pause');
+
+const play = () => {
+    playPauseButton.textContent = "||";
+    renderLoop();
+};
+
+const pause = () => {
+    playPauseButton.textContent = ">";
+    cancelAnimationFrame(animationId);
+    animationId = null;
+};
+
+playPauseButton.addEventListener('click', () => {
+    if (isPaused()) {
+        play();
+    } else {
+        pause();
+    }
+});
+
+canvas.addEventListener('click', event => {
+    const boundingRect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / boundingRect.width;
+    const scaleY = canvas.height / boundingRect.height;
+
+    const canvasLeft = (event.clientX - boundingRect.left) * scaleX;
+    const canvasTop = (event.clientY - boundingRect.top) * scaleY;
+
+    const row = Math.min(Math.floor(canvasTop / (CELL_SIZE + 1)), height - 1);
+    const col = Math.min(Math.floor(canvasLeft / (CELL_SIZE + 1)), width - 1);
+
+    universe.toggle_cell(row, col);
+    drawGrid();
+    drawCells();
+});
