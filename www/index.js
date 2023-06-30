@@ -1,13 +1,31 @@
-import { memory } from "wasm-game-of-life/wasm_game_of_life_bg";
-import { Cell, Universe } from "wasm-game-of-life";
+import { Cell, Universe } from "cursor-wasm";
+import { memory } from "cursor-wasm/cursor_wasm_bg";
 
+const CELL_SIZE = 5;
+const GRID_COLOR = "#808080";
+const ALIVE_COLOR = "#FFFFFF";
+const DEAD_COLOR = "#000000";
 const universe = Universe.new();
 const width = universe.width();
 const height = universe.height();
 const canvas = document.querySelector('canvas');
-canvas.width = (width + 1) + CELL_SIZE + 1;
-canvas.height = (height + 1) + CELL_SIZE + 1;
+canvas.width = (width + 1) * CELL_SIZE + 1;
+canvas.height = (height + 1) * CELL_SIZE + 1;
+const ctx = canvas.getContext('2d');
 let animationId = null;
+
+const playPauseButton = document.getElementById('play-pause');
+
+const play = () => {
+    playPauseButton.textContent = "||";
+    renderLoop();
+};
+
+const pause = () => {
+    playPauseButton.textContent = ">";
+    cancelAnimationFrame(animationId);
+    animationId = null;
+};
 
 class fps {
     constructor() {
@@ -51,12 +69,6 @@ const renderLoop = () => {
 const isPaused = () => {
     return animationId === null;
 };
-
-const CELL_SIZE = 5;
-const GRID_COLOR = "#808080";
-const ALIVE_COLOR = "#FFFFFF";
-const ctx = canvas.getContext('2d');
-const DEAD_COLOR = "#000000";
 
 const drawGrid = () => {
     ctx.beginPath();
@@ -120,23 +132,6 @@ const drawCells = () => {
     ctx.stroke();
 };
 
-drawGrid();
-drawCells();
-play();
-
-const playPauseButton = document.getElementById('play-pause');
-
-const play = () => {
-    playPauseButton.textContent = "||";
-    renderLoop();
-};
-
-const pause = () => {
-    playPauseButton.textContent = ">";
-    cancelAnimationFrame(animationId);
-    animationId = null;
-};
-
 playPauseButton.addEventListener('click', () => {
     if (isPaused()) {
         play();
@@ -160,3 +155,7 @@ canvas.addEventListener('click', event => {
     drawGrid();
     drawCells();
 });
+
+drawGrid();
+drawCells();
+play();
